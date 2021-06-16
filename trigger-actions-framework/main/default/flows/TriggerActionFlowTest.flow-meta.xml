@@ -1,38 +1,22 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>51.0</apiVersion>
     <assignments>
-        <name>Add_to_newListAfterFlow</name>
-        <label>Add to newListAfterFlow</label>
-        <locationX>351</locationX>
-        <locationY>256</locationY>
+        <name>Set_Name</name>
+        <label>Set Name</label>
+        <locationX>176</locationX>
+        <locationY>239</locationY>
         <assignmentItems>
-            <assignToReference>newListAfterFlow</assignToReference>
-            <operator>Add</operator>
+            <assignToReference>Record.Name</assignToReference>
+            <operator>Assign</operator>
             <value>
-                <elementReference>For_Each_Record</elementReference>
+                <stringValue>Hello World</stringValue>
             </value>
         </assignmentItems>
-        <connector>
-            <targetReference>For_Each_Record</targetReference>
-        </connector>
     </assignments>
-    <description
-	>This is meant for test coverage for the TriggerActionFlow class.</description>
-    <interviewLabel
-	>TriggerActionFlowTest {!$Flow.CurrentDateTime}</interviewLabel>
+    <description>This is meant for test coverage for the TriggerActionFlow class.</description>
+    <interviewLabel>TriggerActionFlowTest {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Trigger Action Flow Test</label>
-    <loops>
-        <name>For_Each_Record</name>
-        <label>For Each Record</label>
-        <locationX>176</locationX>
-        <locationY>256</locationY>
-        <collectionReference>newList</collectionReference>
-        <iterationOrder>Asc</iterationOrder>
-        <nextValueConnector>
-            <targetReference>Add_to_newListAfterFlow</targetReference>
-        </nextValueConnector>
-    </loops>
     <processMetadataValues>
         <name>BuilderType</name>
         <value>
@@ -56,30 +40,22 @@
         <locationX>50</locationX>
         <locationY>50</locationY>
         <connector>
-            <targetReference>For_Each_Record</targetReference>
+            <targetReference>Set_Name</targetReference>
         </connector>
     </start>
-    <status>Active</status>
+    <status>Draft</status>
     <variables>
-        <name>newList</name>
+        <name>Record</name>
         <dataType>SObject</dataType>
-        <isCollection>true</isCollection>
+        <isCollection>false</isCollection>
         <isInput>true</isInput>
-        <isOutput>false</isOutput>
-        <objectType>Account</objectType>
-    </variables>
-    <variables>
-        <name>newListAfterFlow</name>
-        <dataType>SObject</dataType>
-        <isCollection>true</isCollection>
-        <isInput>false</isInput>
         <isOutput>true</isOutput>
         <objectType>Account</objectType>
     </variables>
     <variables>
-        <name>oldList</name>
+        <name>Record_Prior</name>
         <dataType>SObject</dataType>
-        <isCollection>true</isCollection>
+        <isCollection>false</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
         <objectType>Account</objectType>

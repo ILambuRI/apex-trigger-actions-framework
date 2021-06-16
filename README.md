@@ -101,19 +101,16 @@ The trigger action framework can also allow you to invoke a flow by name, and de
 
 To make your flows usable, they must be auto-launched flows and you need to create the following flow resource variables depending on which context the flow is meant to be called in:
 
-| Variable Name    | Variable Type     | Available for Input | Available for Output | Description                                                     |
-| ---------------- | ----------------- | ------------------- | -------------------- | --------------------------------------------------------------- |
-| newList          | Record Collection | yes                 | no                   | Used to store the Trigger.new records                           |
-| oldList          | Record Collection | yes                 | no                   | Used to store the Trigger.old records                           |
-| newListAfterFlow | Record Collection | no                  | yes                  | Used to apply record values back during before insert or update |
+| Variable Name | Variable Type | Available for Input | Available for Output | Description                            |
+| ------------- | ------------- | ------------------- | -------------------- | -------------------------------------- |
+| Record        | Record        | yes                 | yes                  | The individual record from Trigger.new |
+| Record_Prior  | Record        | yes                 | no                   | The individual record from Trigger.old |
 
-You can use the `TriggerActionFlow.getOldRecord` invocable method to get the old version of a record and see which values have changed. In order to modify field values before insert or update, we must assign all records back to the `newListAfterFlow` collection variable.
-
-Here is an example of an auto-launched flow that checks if a Case's status has changed and if so it sets the Case's description to a default value.
+Here is an example of an auto-launched flow that checks if a record's status has changed and if so it sets the record's description to a default value of "Hello". All of this is completed before update.
 
 ![Sample Flow](images/sampleFlow.png)
 
-To enable this flow, simply insert a trigger action record with Apex Class Name equal to "TriggerActionFlow" and set the Flow Name field with the API name of the flow itself. You can select the "Allow Flow Recursion" checkbox to allow flows to run recursively (advanced).
+To enable this flow, simply insert a trigger action record with Apex Class Name equal to `TriggerActionFlow` and set the Flow Name field with the API name of the flow itself. You can select the "Allow Flow Recursion" checkbox to allow flows to run recursively (advanced).
 
 ![Flow Trigger Action](images/flowTriggerAction.png)
 

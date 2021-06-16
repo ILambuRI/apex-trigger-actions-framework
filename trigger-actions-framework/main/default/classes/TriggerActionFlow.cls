@@ -20,17 +20,10 @@ public inherited sharing class TriggerActionFlow implements TriggerAction.Before
 	@testVisible
 	private static final String INVALID_FLOW_NAME = 'You must provide the name of a flow to execute';
 	@testVisible
-	private static final String NEW_LIST_AFTER_FLOW = 'newListAfterFlow';
+	private static final String NEW_RECORD = 'Record';
 	@testVisible
-	private static final String NEW_LIST = 'newList';
+	private static final String OLD_RECORD = 'Record_Prior';
 	@testVisible
-	private static final String OLD_LIST = 'oldList';
-	@testVisible
-	private static final String OLD_RECORD_NOT_FOUND = 'An old version of the record cannot be identified in the oldList';
-	@testVisible
-	private static final String INVALID_REQUEST = 'You can only pass one getOldRecordRequest into TriggerActionFlow.getOldRecord()';
-	@testVisible
-	private static final String NEW_LIST_AFTER_FLOW_NOT_POPULATED_CORRECTLY = 'You must pass ALL records back to the newListAfterFlow in order to apply values to record before insert/update';
 	public static final String OBJECT_STRING = 'Object';
 	public static final String APEX_STRING = 'Apex';
 	public static final String FLOW_STRING = 'Flow';
@@ -48,119 +41,119 @@ public inherited sharing class TriggerActionFlow implements TriggerAction.Before
 		bypassedFlows = new Set<String>();
 	}
 
-	@invocableMethod(
-		category='Trigger Action Flow'
-		label='Get Old Record'
-		description='Returns the old version of a record from oldList'
-	)
-	public static List<sObject> getOldRecord(List<OldRecordRequest> request) {
-		if (request.isEmpty() || request.size() > 1) {
-			throw new TriggerActionFlowException(INVALID_REQUEST);
-		}
-		List<sObject> result;
-		if (request[0].currentRecord != null) {
-			Map<Id, sObject> oldMap = new Map<Id, sObject>(request[0].oldList);
-			if (!oldMap.containsKey(request[0].currentRecord.Id)) {
-				throw new TriggerActionFlowException(OLD_RECORD_NOT_FOUND);
-			}
-			result = new List<sObject>{ oldMap.get(request[0].currentRecord.Id) };
-		}
-		return result;
-	}
-
 	public void beforeInsert(List<SObject> newList) {
 		if (!thisFlowIsBypassed()) {
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(newList, null)
-			);
-			myFlow.start();
-			applyFlowValues(
-				newList,
-				(List<sObject>) myFlow.getVariableValue(NEW_LIST_AFTER_FLOW)
-			);
+			Set<String> editableFields = getEditableFields(newList);
+			for (sObject record : newList) {
+				Flow.Interview myFlow = Flow.Interview.createInterview(
+					flowName,
+					new Map<String, Object>{ NEW_RECORD => record }
+				);
+				myFlow.start();
+				System.debug(myFlow.getVariableValue(NEW_RECORD));
+				applyFlowValues(
+					record,
+					(sObject) myFlow.getVariableValue(NEW_RECORD),
+					editableFields
+				);
+			}
 		}
 	}
 
 	public void afterInsert(List<SObject> newList) {
 		if (!thisFlowIsBypassed()) {
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(newList, null)
-			);
-			myFlow.start();
+			for (sObject record : newList) {
+				Flow.Interview myFlow = Flow.Interview.createInterview(
+					flowName,
+					new Map<String, Object>{ NEW_RECORD => record }
+				);
+				myFlow.start();
+			}
 		}
 	}
 
 	public void beforeUpdate(List<SObject> newList, List<SObject> oldList) {
 		if (!thisFlowIsBypassed()) {
-			List<sObject> recordsNotYetProcessed = new List<sObject>();
+			Map<Id, SObject> oldMap = new Map<Id, SObject>(oldList);
+			Set<String> editableFields = getEditableFields(newList);
 			for (sObject record : newList) {
 				if (
 					TriggerBase.idToNumberOfTimesSeenBeforeUpdate.get(record.id) == 1 ||
 					(allowRecursion == true)
 				) {
-					recordsNotYetProcessed.add(record);
+					Flow.Interview myFlow = Flow.Interview.createInterview(
+						flowName,
+						new Map<String, Object>{
+							NEW_RECORD => record,
+							OLD_RECORD => oldMap.get(record.Id)
+						}
+					);
+					myFlow.start();
+					applyFlowValues(
+						record,
+						(sObject) myFlow.getVariableValue(NEW_RECORD),
+						editableFields
+					);
 				}
 			}
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(recordsNotYetProcessed, oldList)
-			);
-			myFlow.start();
-			applyFlowValues(
-				newList,
-				(List<sObject>) myFlow.getVariableValue(NEW_LIST_AFTER_FLOW)
-			);
 		}
 	}
 
 	public void afterUpdate(List<SObject> newList, List<SObject> oldList) {
 		if (!thisFlowIsBypassed()) {
-			List<sObject> recordsNotYetProcessed = new List<sObject>();
+			Map<Id, SObject> oldMap = new Map<Id, SObject>(oldList);
+			Set<String> editableFields = getEditableFields(newList);
 			for (sObject record : newList) {
 				if (
-					TriggerBase.idToNumberOfTimesSeenAfterUpdate.get(record.id) == 1 ||
+					TriggerBase.idToNumberOfTimesSeenBeforeUpdate.get(record.id) == 1 ||
 					(allowRecursion == true)
 				) {
-					recordsNotYetProcessed.add(record);
+					Flow.Interview myFlow = Flow.Interview.createInterview(
+						flowName,
+						new Map<String, Object>{
+							NEW_RECORD => record,
+							OLD_RECORD => oldMap.get(record.Id)
+						}
+					);
+					myFlow.start();
 				}
 			}
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(recordsNotYetProcessed, oldList)
-			);
-			myFlow.start();
 		}
 	}
 
 	public void beforeDelete(List<SObject> oldList) {
 		if (!thisFlowIsBypassed()) {
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(null, oldList)
-			);
-			myFlow.start();
+			for (sObject record : oldList) {
+				Flow.Interview myFlow = Flow.Interview.createInterview(
+					flowName,
+					new Map<String, Object>{ OLD_RECORD => record }
+				);
+				myFlow.start();
+			}
 		}
 	}
 
 	public void afterDelete(List<SObject> oldList) {
 		if (!thisFlowIsBypassed()) {
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(null, oldList)
-			);
-			myFlow.start();
+			for (sObject record : oldList) {
+				Flow.Interview myFlow = Flow.Interview.createInterview(
+					flowName,
+					new Map<String, Object>{ OLD_RECORD => record }
+				);
+				myFlow.start();
+			}
 		}
 	}
 
 	public void afterUndelete(List<SObject> newList) {
 		if (!thisFlowIsBypassed()) {
-			Flow.Interview myFlow = Flow.Interview.createInterview(
-				flowName,
-				getFlowInput(newList, null)
-			);
-			myFlow.start();
+			for (sObject record : newList) {
+				Flow.Interview myFlow = Flow.Interview.createInterview(
+					flowName,
+					new Map<String, Object>{ NEW_RECORD => record }
+				);
+				myFlow.start();
+			}
 		}
 	}
 
@@ -187,71 +180,33 @@ public inherited sharing class TriggerActionFlow implements TriggerAction.Before
 		return TriggerActionFlow.isBypassed(flowName);
 	}
 
-	private Map<String, Object> getFlowInput(
-		List<SObject> newList,
-		List<SObject> oldList
-	) {
-		Map<String, Object> result = new Map<String, Object>();
-		if (newList != null) {
-			result.put(NEW_LIST, newList);
+	private Set<String> getEditableFields(List<SObject> newList) {
+		Set<String> editableFields = new Set<String>();
+		for (
+			Schema.SObjectField fieldRef : newList[0]
+				.getSObjectType()
+				.getDescribe()
+				.fields.getMap()
+				.values()
+		) {
+			Schema.DescribeFieldResult fieldResult = fieldRef.getDescribe();
+			if (fieldResult.isUpdateable()) {
+				editableFields.add(fieldResult.getName());
+			}
 		}
-		if (oldList != null) {
-			result.put(OLD_LIST, oldList);
-		}
-		return result;
+		return editableFields;
 	}
 
 	private void applyFlowValues(
-		List<sObject> newList,
-		List<sObject> newListAfterFlow
+		SObject newRecord,
+		SObject newRecordAfterFlow,
+		Set<String> editableFields
 	) {
-		if (
-			newList != null &&
-			!newList.isEmpty() &&
-			newListAfterFlow != null &&
-			!newListAfterFlow.isEmpty()
-		) {
-			if (newList.size() != newListAfterFlow.size()) {
-				throw new TriggerActionFlowException(
-					NEW_LIST_AFTER_FLOW_NOT_POPULATED_CORRECTLY
-				);
-			}
-			List<String> editableFields = new List<String>();
-			for (
-				Schema.SObjectField fieldRef : newList[0]
-					.getSObjectType()
-					.getDescribe()
-					.fields.getMap()
-					.values()
-			) {
-				Schema.DescribeFieldResult fieldResult = fieldRef.getDescribe();
-				if (fieldResult.isUpdateable()) {
-					editableFields.add(fieldResult.getName());
-				}
-			}
-			for (Integer i = 0; i < newList.size(); i++) {
-				for (String fieldName : editableFields) {
-					if (newList[i].get(fieldName) != newListAfterFlow[i].get(fieldName)) {
-						newList[i].put(fieldName, newListAfterFlow[i].get(fieldName));
-					}
-				}
+		for (String fieldName : editableFields) {
+			if (newRecord.get(fieldName) != newRecordAfterFlow.get(fieldName)) {
+				newRecord.put(fieldName, newRecordAfterFlow.get(fieldName));
 			}
 		}
-	}
-
-	public class OldRecordRequest {
-		@InvocableVariable(
-			label='Current Record'
-			description='The current record'
-			required=true
-		)
-		public sObject currentRecord;
-		@InvocableVariable(
-			label='Old List'
-			description='A list of all the records with the old field values'
-			required=true
-		)
-		public List<sObject> oldList;
 	}
 
 	class TriggerActionFlowException extends Exception {
